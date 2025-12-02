@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket Analyzer - Largest Company 2025</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      padding: 40px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { color: #f0f6fc; margin-bottom: 8px; }
+    .subtitle { color: #8b949e; margin-bottom: 30px; }
+
+    .market-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .market-title { font-size: 20px; color: #f0f6fc; margin-bottom: 20px; }
+
+    .outcomes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .outcome {
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .outcome-name { color: #8b949e; font-size: 14px; margin-bottom: 4px; }
+    .outcome-price { color: #58a6ff; font-size: 24px; font-weight: 600; }
+    .outcome-volume { color: #6e7681; font-size: 12px; margin-top: 4px; }
+
+    .analyze-btn {
+      background: linear-gradient(135deg, #238636, #2ea043);
+      border: none;
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      width: 100%;
+    }
+    .analyze-btn:hover { background: linear-gradient(135deg, #2ea043, #3fb950); }
+    .analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .analysis {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 24px;
+    }
+    .analysis h3 { color: #f0f6fc; margin-bottom: 16px; }
+    .analysis-text {
+      white-space: pre-wrap;
+      line-height: 1.7;
+      color: #c9d1d9;
+    }
+    .analysis-text strong { color: #f0f6fc; }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #8b949e;
+    }
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #30363d;
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error { color: #f85149; padding: 16px; background: #3d1a1a; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Polymarket Analyzer</h1>
+    <p class="subtitle">AI-powered analysis of prediction market odds</p>
+
+    <div class="market-card">
+      <div class="market-title">Largest Company end of 2025?</div>
+      <div class="outcomes" id="outcomes">
+        <div class="loading">
+          <div class="spinner"></div>
+          <span>Loading market data...</span>
+        </div>
+      </div>
+      <button class="analyze-btn" id="analyzeBtn" disabled>Analyze with Claude AI</button>
+    </div>
+
+    <div class="analysis" id="analysisPanel" style="display: none;">
+      <h3>AI Analysis</h3>
+      <div class="analysis-text" id="analysisText"></div>
+    </div>
+  </div>
+
+  <script>
+    let eventData = null;
+
+    async function loadMarket() {
+      try {
+        const res = await fetch('/api/event/largest-company-end-of-2025');
+        eventData = await res.json();
+        renderOutcomes();
+        document.getElementById('analyzeBtn').disabled = false;
+      } catch (err) {
+        document.getElementById('outcomes').innerHTML = `<div class="error">Failed to load market: ${err.message}</div>`;
+      }
+    }
+
+    function parseArray(val) {
+      if (Array.isArray(val)) return val;
+      try { return JSON.parse(val); } catch { return []; }
+    }
+
+    function renderOutcomes() {
+      const activeMarkets = eventData.markets.filter(m => m.active && parseFloat(m.volume) > 0);
+
+      const html = activeMarkets.map(m => {
+        const outcomes = parseArray(m.outcomes);
+        const prices = parseArray(m.outcomePrices);
+        const yesPrice = (parseFloat(prices[0]) * 100).toFixed(1);
+        const vol = (parseFloat(m.volume) / 1000000).toFixed(2);
+
+        return `
+          <div class="outcome">
+            <div class="outcome-name">${m.groupItemTitle}</div>
+            <div class="outcome-price">${yesPrice}%</div>
+            <div class="outcome-volume">$${vol}M volume</div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('outcomes').innerHTML = html;
+    }
+
+    async function analyze() {
+      const btn = document.getElementById('analyzeBtn');
+      const panel = document.getElementById('analysisPanel');
+      const text = document.getElementById('analysisText');
+
+      btn.disabled = true;
+      btn.textContent = 'Analyzing...';
+      panel.style.display = 'block';
+      text.innerHTML = `<div class="loading"><div class="spinner"></div><span>Claude is analyzing this market...</span></div>`;
+
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event: eventData })
+        });
+
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        text.innerHTML = data.analysis
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\n/g, '<br>');
+      } catch (err) {
+        text.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Analyze with Claude AI';
+    }
+
+    document.getElementById('analyzeBtn').addEventListener('click', analyze);
+    loadMarket();
+  </script>
+</body>
+</html>

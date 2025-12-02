@@ -97,18 +97,24 @@ app.post('/api/analyze', async (req, res) => {
       messages: [
         {
           role: 'user',
-          content: `You are an expert market analyst evaluating prediction market odds. Analyze this Polymarket event and determine if the current odds seem mispriced or out of balance.
+          content: `You are an expert market analyst evaluating prediction market odds. Today's date is ${new Date().toISOString().split('T')[0]}. Analyze this Polymarket event and determine if the current odds seem mispriced.
 
 ${marketContext}
 
-Please provide:
-1. **Your Fair Probability Estimate**: What do you think the true probability should be for each outcome? (as percentages)
-2. **Discrepancy Analysis**: Compare your estimates to the current market prices. Flag any outcomes where you see a >30% difference (high confidence mispricing).
-3. **Reasoning**: Explain your logic briefly.
-4. **Verdict**: Is this market MISPRICED (good betting opportunity), FAIR (roughly correct), or UNCERTAIN (hard to evaluate)?
-5. **Confidence Level**: How confident are you in your analysis? (High/Medium/Low)
+IMPORTANT: Look at the end date carefully - this market may resolve very soon (within weeks/days). Consider:
+- Current market caps of the companies involved
+- Recent stock price movements and trends
+- How much the market cap would need to change in the remaining time
+- Whether such a change is realistic given current momentum
 
-Be direct and analytical. Focus on factual reasoning.`
+Please provide:
+1. **Current Reality Check**: What are the actual current market caps? Who is #1 right now?
+2. **Your Fair Probability Estimate**: What do you think the true probability should be for each outcome?
+3. **Discrepancy Analysis**: Compare your estimates to the current market prices. Flag any that look wrong.
+4. **Verdict**: MISPRICED / FAIR / UNCERTAIN
+5. **If mispriced**: Which bet looks attractive and why?
+
+Be direct and specific with numbers. No fluff.`
         }
       ]
     });
